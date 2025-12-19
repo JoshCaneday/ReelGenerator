@@ -1,0 +1,29 @@
+torch==2.5.1
+torchvision==0.20.1
+
+
+# OpenAI CLIP (the one with clip.load)
+git+https://github.com/openai/CLIP.git
+
+pillow
+numpy
+requests
+urllib3
+
+# Parler TTS requirements
+transformers
+parler-tts
+soundfile
+
+# CLIP repo deps (safe to include explicitly)
+ftfy
+regex
+tqdm
+
+# often needed by HF models
+accelerate
+safetensors
+sentencepiece
+
+# XTTS Coqui requirements
+TTS
