@@ -1,5 +1,7 @@
-# Byte-compiled / optimized / DLL files
+# IMPORTANT: Many of the notebooks wont work until you run the code in modelDownload.ipynb first as they are too large to store in Github
 models/
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
 *$py.class
