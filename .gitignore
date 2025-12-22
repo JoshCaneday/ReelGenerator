@@ -1,5 +1,7 @@
 # IMPORTANT: Many of the notebooks wont work until you run the code in modelDownload.ipynb first as they are too large to store in Github
 models/
+videos/
+images/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -27,3 +27,6 @@ sentencepiece
 
 # XTTS Coqui requirements
 TTS
+
+# yt downloader
+yt-dlp[default]
