@@ -5,11 +5,10 @@ from pathlib import Path
 class Clipper:
     def __init__(self):
         self.VIDEOS_DIR = Path("videos")
-        self.CLIPS_DIR = Path("clips")
         self.FRAME_INTERVAL_SECONDS = 1.0
         self.IMG_RE = re.compile(r"\[(?P<vid>[A-Za-z0-9_-]+)\]_(?P<idx>\d+)\.(jpg|jpeg|png)$", re.I)
 
-    def extract_clip(self, outDir, clipDuration, imagePath: str):
+    def extract_clip(self, outDir, clipDuration, imagePath: str) -> str:
         m = self.IMG_RE.search(imagePath.name)
         if not m:
             raise ValueError(f"Bad image name: {imagePath.name}")
@@ -23,7 +22,7 @@ class Clipper:
         videoDuration = self.get_duration(video)
         start, end = self.clamp_window(timestamp, videoDuration, clipDuration)
 
-        out_path = outDir / f"{video.stem}_t{timestamp:.3f}_len{clipDuration:.3f}.mp4"
+        out_path = outDir + ".mp4"
 
         print("Image:", imagePath)
         print("Video :", video.name)
@@ -43,6 +42,7 @@ class Clipper:
         ], check=True)
 
         print("Done.")
+        return out_path
 
     def get_duration(self, video: Path) -> float:
         # ffprobe output is just: 442.851234

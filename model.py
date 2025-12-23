@@ -15,8 +15,8 @@ class TextToImage:
             self.image_features = self.model.encode_image(self.images)
     
     def assign(self,script):
-        sentences = script.strip().split(".")
-        text = clip.tokenize(sentences).to(self.device)
+        sentence = [script]
+        text = clip.tokenize(sentence).to(self.device)
         with torch.no_grad():
             text_features = self.model.encode_text(text)
 

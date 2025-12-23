@@ -3,6 +3,7 @@ models/
 videos/
 images/
 SECRET.txt
+templateOne.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
