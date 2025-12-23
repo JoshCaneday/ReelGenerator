@@ -30,3 +30,6 @@ TTS
 
 # yt downloader
 yt-dlp[default]
+
+# free llm
+groq

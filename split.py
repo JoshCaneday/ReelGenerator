@@ -3,7 +3,7 @@ import subprocess
 
 VIDEO_DIR = Path("videos")
 IMAGE_DIR = Path("images")
-INTERVAL_SECONDS = 3  # every 3 seconds
+INTERVAL_SECONDS = 1  # every 3 seconds
 
 IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -28,6 +28,8 @@ for video in VIDEO_DIR.glob("*.mp4"):
             "2",
             "-vsync",
             "vfr",
+            "-start_number",
+            "0",
             out_pattern,
         ],
         check=True,
