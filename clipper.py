@@ -6,12 +6,14 @@ class Clipper:
     def __init__(self):
         self.VIDEOS_DIR = Path("videos")
         self.FRAME_INTERVAL_SECONDS = 1.0
-        self.IMG_RE = re.compile(r"\[(?P<vid>[A-Za-z0-9_-]+)\]_(?P<idx>\d+)\.(jpg|jpeg|png)$", re.I)
+        self.IMG_RE = re.compile(r"\[(?P<vid>.*?)\]_(?P<idx>\d+)", re.I)
 
     def extract_clip(self, outDir, clipDuration, imagePath: str) -> str:
-        m = self.IMG_RE.search(imagePath.name)
+        out_dir = Path(outDir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        m = self.IMG_RE.search(imagePath)
         if not m:
-            raise ValueError(f"Bad image name: {imagePath.name}")
+            raise ValueError(f"Bad image name: {imagePath}")
 
         videoID = m.group("vid")
         idx = int(m.group("idx"))

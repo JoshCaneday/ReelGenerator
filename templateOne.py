@@ -1,7 +1,7 @@
-from clip import Clipper
+from clipper import Clipper
 from llm import LLM
 from model import TextToImage
-from tts import TTS
+from tts import MYTTS
 
 import subprocess
 from pathlib import Path
@@ -23,68 +23,80 @@ Must include:
 - A closing 2-line mic-drop
 
 Constraints:
-- 150–190 words
-- 8–12 paragraphs (mostly 1 sentence each)
+- 50–90 words
+- 3–6 paragraphs (mostly 1 sentence each)
 - No hashtags, no emojis, no stage directions
 
 Output ONLY the script. No title. No explanation. No formatting other than line breaks.
 """
 
 def create_project(outputFolderName, automatic=True, script="", music=""):
+    outputFolderName = "./projects" + outputFolderName
+    output_path = Path(outputFolderName)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
     llm = LLM()
-    tts = TTS()
-    clip = TextToImage()
+    tts = MYTTS()
+    clip_model = TextToImage()
     clipper = Clipper()
-    if automatic:
-        # LLM
-        text = llm.get_response(generateScriptPrompt)
-        sentences = text.strip().split(".")
-        sentenceNum = 0
-        videoPaths = []
-        for sentence in sentences:
-            sentenceNum += 1
 
+    if automatic:
+        text = ""
+        if not script:
+            text = llm.get_response(generateScriptPrompt)
+        else:
+            text = script
+        sentences = [s.strip() for s in text.split(".") if len(s.strip()) > 2]
+        
+        videoPaths = []
+        for i, sentence in enumerate(sentences, 1):
             # TTS
-            ttsPath, ttsDuration = tts.generate(sentence,"voice1","/ttsSentence" + str(sentenceNum), outputFolderName)
-            # CLIP (two types of "clip" used here, one as in a video clip, the other as in the OpenAI CLIP model)
-            imagePath = clip.assign(sentence)
-            clipPath = clipper.extract_clip(outputFolderName + "/clip" + str(sentenceNum), ttsDuration, imagePath)
-            videoPaths.append(mux_audio_video(clipPath,ttsPath,f"{outputFolderName}/video{sentenceNum:04d}.mp4"))
-        finalPath = concat_videos(videoPaths, f"{outputFolderName}/final.mp4")
-        print(finalPath)
+            tts_filename = f"tts_part_{i}"
+            ttsPath, ttsDuration = tts.generate(sentence, "voice1", tts_filename, str(output_path))
+            
+            # CLIP
+            imageName = clip_model.assign(sentence)
+            
+            # Extract video segment
+            out_clip_base = str(output_path / "clips" / f"clip_{i}")
+            clipPath = clipper.extract_clip(out_clip_base, ttsDuration, imageName)
+            
+            # Mux (Combine audio and video)
+            final_segment = str(output_path / "segments" / f"segment_{i:04d}.mp4")
+            videoPaths.append(mux_audio_video(clipPath, ttsPath, final_segment))
+            
+        finalPath = concat_videos(videoPaths, str(output_path / "final_reel.mp4"))
+        print(f"Success! Video created at: {finalPath}")
+    
 
 def mux_audio_video(clip_path: str, audio_path: str, out_path: str) -> str:
-    # -shortest: stop when the shortest stream ends (usually audio if video is longer)
-    # Re-encode to widely compatible codecs (H.264 + AAC).
+    out_file = Path(out_path)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    # We take VIDEO from input 0 and AUDIO from input 1
+    # We re-encode the audio to aac to ensure it "sticks" to the video
     cmd = [
         "ffmpeg",
         "-hide_banner", "-loglevel", "error",
         "-y",
-        "-i", clip_path,
-        "-i", audio_path,
-        "-map", "0:v:0",
-        "-map", "1:a:0",
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-crf", "20",
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-shortest",
-        "-movflags", "+faststart",
+        "-i", clip_path,   # The visual clip (Input 0)
+        "-i", audio_path,  # The TTS audio (Input 1)
+        "-map", "0:v:0",   # Take ONLY video from clip
+        "-map", "1:a:0",   # Take ONLY audio from TTS
+        "-c:v", "copy",    # Keep video as is
+        "-c:a", "aac",     # Encode audio to a compatible format
+        "-shortest",       # Match the length of the shortest stream
         out_path,
     ]
     subprocess.run(cmd, check=True)
     return out_path
 
 def concat_videos(video_paths: list[str], out_path: str) -> str:
-    out_path = str(out_path)
-
-    # Create concat list file
-    list_path = Path(out_path).with_suffix(".concat.txt")
+    out_path = Path(out_path)
+    list_path = Path(video_paths[0]).parent / "final_reel.concat.txt"
+    
     with open(list_path, "w", encoding="utf-8") as f:
         for p in video_paths:
-            # concat demuxer requires: file 'path'
-            f.write(f"file '{Path(p).as_posix()}'\n")
+            f.write(f"file '{Path(p).name}'\n")
 
     cmd = [
         "ffmpeg",
@@ -92,10 +104,12 @@ def concat_videos(video_paths: list[str], out_path: str) -> str:
         "-y",
         "-f", "concat",
         "-safe", "0",
-        "-i", str(list_path),
+        "-i", list_path.name,
         "-c", "copy",
-        out_path,
+        f"../{out_path.name}",
     ]
-    subprocess.run(cmd, check=True)
-    return out_path    
+    
+    subprocess.run(cmd, check=True, cwd=Path(video_paths[0]).parent)
+    return str(out_path)
         
+create_project("/proj1")
