@@ -4,6 +4,7 @@ videos/*
 images/*
 projects/*
 temp.py
+image_embeddings.pt
 SECRET.txt
 
 # Byte-compiled / optimized / DLL files

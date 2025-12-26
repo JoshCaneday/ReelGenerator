@@ -31,14 +31,16 @@ Output ONLY the script. No title. No explanation. No formatting other than line 
 """
 
 def create_project(outputFolderName, automatic=True, script="", music=""):
-    outputFolderName = "./projects" + outputFolderName
-    output_path = Path(outputFolderName)
-    output_path.mkdir(parents=True, exist_ok=True)
     
     llm = LLM()
     tts = MYTTS()
     clip_model = TextToImage()
     clipper = Clipper()
+
+    outputFolderName = "./projects" + outputFolderName
+    outputPath = Path(outputFolderName)
+    outputPath.mkdir(parents=True, exist_ok=True)
+
 
     if automatic:
         text = ""
@@ -51,27 +53,29 @@ def create_project(outputFolderName, automatic=True, script="", music=""):
         videoPaths = []
         for i, sentence in enumerate(sentences, 1):
             # TTS
-            tts_filename = f"tts_part_{i}"
-            ttsPath, ttsDuration = tts.generate(sentence, "voice1", tts_filename, str(output_path))
+            ttsFileName = f"tts_part_{i}.wav"
+            ttsPath, ttsDuration = tts.generate(sentence, "voice1.wav", ttsFileName, outputPath)
             
             # CLIP
             imageName = clip_model.assign(sentence)
             
             # Extract video segment
-            out_clip_base = str(output_path / "clips" / f"clip_{i}")
-            clipPath = clipper.extract_clip(out_clip_base, ttsDuration, imageName)
+            clipFileName = f"clip_{i}.mp4"
+            clipPath = clipper.extract_clip(ttsDuration, imageName, clipFileName, outputPath)
             
             # Mux (Combine audio and video)
-            final_segment = str(output_path / "segments" / f"segment_{i:04d}.mp4")
-            videoPaths.append(mux_audio_video(clipPath, ttsPath, final_segment))
-            
-        finalPath = concat_videos(videoPaths, str(output_path / "final_reel.mp4"))
-        print(f"Success! Video created at: {finalPath}")
+            segmentFileName = f"segment_{i:04d}.mp4"
+            videoPaths.append(mux_audio_video(clipPath, ttsPath, segmentFileName, outputPath))
+        
+        resultFileName = "final_reel.mp4"
+        finalPath = concat_videos(videoPaths, resultFileName, outputPath)
+        print(f"Video created at: {finalPath}")
     
 
-def mux_audio_video(clip_path: str, audio_path: str, out_path: str) -> str:
-    out_file = Path(out_path)
-    out_file.parent.mkdir(parents=True, exist_ok=True)
+def mux_audio_video(clip_path: str, audio_path: str, outputFileName: str, outputDirectory: Path) -> str:
+    outPath = outputDirectory / "segments"
+    outPath.mkdir(parents=True, exist_ok=True)
+    outPath  = outPath / outputFileName
     # We take VIDEO from input 0 and AUDIO from input 1
     # We re-encode the audio to aac to ensure it "sticks" to the video
     cmd = [
@@ -85,31 +89,33 @@ def mux_audio_video(clip_path: str, audio_path: str, out_path: str) -> str:
         "-c:v", "copy",    # Keep video as is
         "-c:a", "aac",     # Encode audio to a compatible format
         "-shortest",       # Match the length of the shortest stream
-        out_path,
+        str(outPath),
     ]
     subprocess.run(cmd, check=True)
-    return out_path
+    return str(outPath)
 
-def concat_videos(video_paths: list[str], out_path: str) -> str:
-    out_path = Path(out_path)
-    list_path = Path(video_paths[0]).parent / "final_reel.concat.txt"
+def concat_videos(videoPaths: list[str], resultFileName: str, outPath: Path) -> str:
+    segments_dir = outPath / "segments"
+    list_path = segments_dir / "final_reel.concat.txt"
     
     with open(list_path, "w", encoding="utf-8") as f:
-        for p in video_paths:
+        for p in videoPaths:
+            # We only write the filename (e.g., 'segment_0001.mp4')
+            # because FFmpeg will be running in the same folder as these files
             f.write(f"file '{Path(p).name}'\n")
 
     cmd = [
-        "ffmpeg",
-        "-hide_banner", "-loglevel", "error",
-        "-y",
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
         "-f", "concat",
         "-safe", "0",
-        "-i", list_path.name,
+        "-i", list_path.name,  # 'final_reel.concat.txt'
         "-c", "copy",
-        f"../{out_path.name}",
+        f"../{resultFileName}" # '../final_reel.mp4' moves it up into 'proj2'
     ]
     
-    subprocess.run(cmd, check=True, cwd=Path(video_paths[0]).parent)
-    return str(out_path)
+    # 3. Execute from INSIDE the segments folder
+    subprocess.run(cmd, check=True, cwd=segments_dir)
+    
+    return str(outPath / resultFileName)
         
-create_project("/proj1")
+create_project("/proj5")

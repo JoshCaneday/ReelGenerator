@@ -8,9 +8,10 @@ class Clipper:
         self.FRAME_INTERVAL_SECONDS = 1.0
         self.IMG_RE = re.compile(r"\[(?P<vid>.*?)\]_(?P<idx>\d+)", re.I)
 
-    def extract_clip(self, outDir, clipDuration, imagePath: str) -> str:
-        out_dir = Path(outDir)
-        out_dir.mkdir(parents=True, exist_ok=True)
+    def extract_clip(self, clipDuration: float, imagePath: str, outputFileName: str, outputDirectory: Path) -> str:
+        outPath = outputDirectory / "clips"
+        outPath.mkdir(parents=True, exist_ok=True)
+
         m = self.IMG_RE.search(imagePath)
         if not m:
             raise ValueError(f"Bad image name: {imagePath}")
@@ -24,12 +25,12 @@ class Clipper:
         videoDuration = self.get_duration(video)
         start, end = self.clamp_window(timestamp, videoDuration, clipDuration)
 
-        out_path = outDir + ".mp4"
+        outPath = outPath / outputFileName
 
         print("Image:", imagePath)
         print("Video :", video.name)
         print(f"idx={idx} -> t={timestamp:.3f}s")
-        print(f"Extract [{start:.3f}, {end:.3f}] -> {out_path}")
+        print(f"Extract [{start:.3f}, {end:.3f}] -> {outPath}")
 
         subprocess.run([
             "ffmpeg",
@@ -40,11 +41,11 @@ class Clipper:
             "-c:v", "libx264", "-crf", "20", "-preset", "veryfast",
             "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",
-            str(out_path),
+            str(outPath),
         ], check=True)
 
         print("Done.")
-        return out_path
+        return outPath
 
     def get_duration(self, video: Path) -> float:
         # ffprobe output is just: 442.851234
